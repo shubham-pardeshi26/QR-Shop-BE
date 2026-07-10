@@ -1,0 +1,1 @@
+"""QueueGames backend application package."""

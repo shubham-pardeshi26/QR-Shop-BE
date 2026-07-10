@@ -1,0 +1,22 @@
+# FastAPI + core
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+
+# Database
+SQLAlchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.2
+
+# Auth / security
+python-jose[cryptography]>=3.3
+python-multipart>=0.0.9
+email-validator>=2.1
+
+# Supabase admin + HTTP
+httpx>=0.27
+
+# Rate limiting + QR
+slowapi>=0.1.9
+segno>=1.6

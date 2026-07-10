@@ -1,0 +1,21 @@
+# Optional: a plain local Postgres for development when you don't have the
+# Supabase CLI / Docker-based `supabase start`. Point backend/.env at it:
+#   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/queuegames
+#
+# The RECOMMENDED local setup is the Supabase CLI (`supabase start`), which
+# also gives you Auth + Storage locally. This file is just a lightweight
+# fallback for the database alone.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: queuegames
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
