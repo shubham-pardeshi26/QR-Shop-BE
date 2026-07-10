@@ -1,7 +1,7 @@
 """Customer public flow: register → start → complete → coupon, incl. anti-abuse."""
 
 
-def _register(client, slug, phone="+15550000009"):
+def _register(client, slug, phone="5550000009"):
     return client.post(f"/api/public/s/{slug}/register", json={"name": "Ada", "phone": phone})
 
 
@@ -26,6 +26,25 @@ def test_play_requires_session(client, make_shop, make_game):
     shop = make_shop(slug="cafe")
     game = make_game(shop)
     assert client.post(f"/api/public/play/games/{game.id}/start", json={}).status_code == 401
+
+
+def test_register_returns_session_token(client, make_shop):
+    shop = make_shop(slug="cafe")
+    resp = _register(client, shop.slug)
+    assert resp.status_code == 200
+    assert resp.json().get("session_token")
+
+
+def test_register_rejects_invalid_phone(client, make_shop):
+    shop = make_shop(slug="cafe")
+    # too short
+    assert client.post(
+        f"/api/public/s/{shop.slug}/register", json={"name": "Ada", "phone": "12345"}
+    ).status_code == 422
+    # contains letters
+    assert client.post(
+        f"/api/public/s/{shop.slug}/register", json={"name": "Ada", "phone": "98abc43210"}
+    ).status_code == 422
 
 
 def test_full_win_flow(client, make_shop, make_game, make_tier):

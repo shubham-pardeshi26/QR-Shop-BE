@@ -1,8 +1,9 @@
 """Public (customer-facing) schemas."""
+import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.enums import CouponStatus, DiscountType
 
@@ -31,7 +32,21 @@ class ShopWithGames(BaseModel):
 
 class RegisterIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    phone: str = Field(min_length=6, max_length=32)
+    phone: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        cleaned = re.sub(r"[\s()\-]", "", value.strip())
+        if not cleaned.isdigit() or len(cleaned) != 10:
+            raise ValueError("Enter a valid 10-digit phone number")
+        return cleaned
+
+
+class RegisterOut(ShopWithGames):
+    # Customer session token — the frontend stores it and sends it as a Bearer
+    # header (works cross-site, unlike the fallback cookie).
+    session_token: str
 
 
 class SegmentOut(BaseModel):

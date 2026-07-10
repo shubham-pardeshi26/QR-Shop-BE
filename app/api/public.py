@@ -25,6 +25,7 @@ from app.schemas.public import (
     GamePublic,
     PlayResultOut,
     RegisterIn,
+    RegisterOut,
     SegmentOut,
     ShopPublic,
     ShopWithGames,
@@ -64,11 +65,11 @@ def get_shop(slug: str, db: DbSession) -> ShopWithGames:
     return _shop_with_games(db, _active_shop(db, slug))
 
 
-@router.post("/s/{slug}/register", response_model=ShopWithGames)
+@router.post("/s/{slug}/register", response_model=RegisterOut)
 @limiter.limit("30/minute")
 def register(
     slug: str, payload: RegisterIn, request: Request, response: Response, db: DbSession
-) -> ShopWithGames:
+) -> RegisterOut:
     shop = _active_shop(db, slug)
     customer = db.scalar(
         select(Customer).where(Customer.shop_id == shop.id, Customer.phone == payload.phone)
@@ -83,16 +84,19 @@ def register(
     db.refresh(customer)
 
     token = create_customer_token(str(customer.id), str(shop.id))
+    # Cookie is a same-origin fallback; the token in the body is the primary
+    # mechanism (works cross-site, where a Lax/3rd-party cookie would not).
     response.set_cookie(
         key="qg_session",
         value=token,
         httponly=True,
-        samesite="lax",  # same-origin in dev via the Vite proxy; use "none"+secure if cross-site
+        samesite="lax",
         secure=settings.is_production,
         max_age=settings.customer_session_ttl_minutes * 60,
         path="/",
     )
-    return _shop_with_games(db, shop)
+    swg = _shop_with_games(db, shop)
+    return RegisterOut(shop=swg.shop, games=swg.games, session_token=token)
 
 
 @router.get("/play/games", response_model=list[GamePublic])

@@ -2,7 +2,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -86,12 +86,22 @@ TenantShopId = Annotated[uuid.UUID, Depends(get_tenant_shop_id)]
 def get_current_customer(
     db: Annotated[Session, Depends(get_db)],
     qg_session: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
 ) -> Customer:
-    """Resolve the customer from the password-less session cookie."""
-    if not qg_session:
+    """Resolve the customer from a Bearer token or the session cookie.
+
+    The Bearer header is preferred (works cross-site, where the cookie won't be
+    sent); the httpOnly cookie is a same-origin fallback.
+    """
+    token: str | None = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    elif qg_session:
+        token = qg_session
+    if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "No customer session")
     try:
-        claims = verify_customer_token(qg_session)
+        claims = verify_customer_token(token)
         customer_id = uuid.UUID(str(claims.get("sub")))
     except (JWTError, ValueError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid customer session") from exc
