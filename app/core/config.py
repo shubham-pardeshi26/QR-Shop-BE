@@ -4,6 +4,7 @@ All settings are read once and cached. Import the module-level ``settings``
 object anywhere you need config.
 """
 from functools import lru_cache
+import json
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api"
 
-    # CORS (comma-separated in the env var; see ``cors_origins_list``)
+    # CORS — accepts a JSON array or a comma-separated string (see cors_origins_list)
     cors_origins: str = "http://localhost:5173"
 
     # Public URL of the customer-facing SPA (used to build QR codes / links)
@@ -42,7 +43,26 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Allowed CORS origins.
+
+        Tolerates both a JSON array (e.g. '["https://a.com","https://b.com"]')
+        and a plain comma-separated string, stripping stray brackets/quotes.
+        """
+        raw = self.cors_origins.strip()
+        if not raw:
+            return []
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+            except ValueError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(o).strip().rstrip("/") for o in parsed if str(o).strip()]
+        return [
+            cleaned.rstrip("/")
+            for part in raw.strip("[]").split(",")
+            if (cleaned := part.strip().strip('"').strip("'"))
+        ]
 
     @property
     def supabase_base_url(self) -> str:
